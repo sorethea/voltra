@@ -1,27 +1,6 @@
 # ============================================================
 # Voltra · ខែលអគ្គីសនី — Dockerfile
 # ============================================================
-
-# ============================================================
-# Stage 1 — Composer dependencies
-# ============================================================
-FROM composer:2.8 AS composer-stage
-
-WORKDIR /app
-
-COPY composer.json composer.lock ./
-
-RUN composer install \
-    --no-interaction \
-    --no-dev \
-    --prefer-dist \
-    --no-scripts \
-    --no-autoloader \
-    --optimize-autoloader
-
-# ============================================================
-# Stage 2 — Runtime (PHP-FPM + Nginx + Supervisor + Node)
-# ============================================================
 FROM php:8.4-fpm-alpine AS runtime
 
 LABEL org.opencontainers.image.title="Voltra" \
@@ -34,6 +13,8 @@ RUN apk add --no-cache \
     nginx \
     supervisor \
     curl \
+    nodejs \
+    npm \
     libpng-dev \
     libjpeg-turbo-dev \
     freetype-dev \
@@ -71,22 +52,29 @@ RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
     && docker-php-ext-enable redis \
     && apk del .build-deps
 
+# ---------- Composer ----------
+COPY --from=composer:2.8 /usr/bin/composer /usr/bin/composer
+
 # ---------- PHP config ----------
 COPY docker/php/local.ini /usr/local/etc/php/conf.d/99-voltra.ini
 
 WORKDIR /var/www/html
 
-# ---------- Composer binary ----------
-COPY --from=composer-stage /usr/bin/composer /usr/bin/composer
-
-# ---------- Vendor from stage 1 ----------
-COPY --from=composer-stage /app/vendor ./vendor
-
 # ---------- App source ----------
 COPY . .
 
-# ---------- Autoloader ----------
-RUN composer dump-autoload --optimize --classmap-authoritative --no-scripts
+# ---------- Composer install (now extensions exist) ----------
+RUN composer install \
+        --no-interaction \
+        --no-dev \
+        --prefer-dist \
+        --no-scripts \
+        --optimize-autoloader \
+    && composer dump-autoload --optimize --classmap-authoritative --no-scripts
+
+# ---------- Regenerate package cache inside the image ----------
+RUN rm -f bootstrap/cache/*.php \
+    && php artisan package:discover --ansi || true
 
 # ---------- Directories + permissions ----------
 RUN mkdir -p \
@@ -111,13 +99,10 @@ RUN chmod +x /usr/local/bin/supervisor-event-listener.sh
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-# ---------- Expose ----------
 EXPOSE 80
 
-# ---------- Healthcheck ----------
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD curl -fsS http://localhost/up || exit 1
 
-# ---------- Boot ----------
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["supervisord", "-c", "/etc/supervisord.conf"]
