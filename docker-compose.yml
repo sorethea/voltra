@@ -1,0 +1,93 @@
+name: voltra-dev
+
+services:
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            target: runtime
+        image: voltra/app:dev
+        container_name: voltra-app
+        restart: unless-stopped
+        ports:
+            - "8080:80"
+        environment:
+            APP_ENV: local
+            APP_DEBUG: "true"
+            RUN_MIGRATIONS: "false"
+            QUEUE_WORKERS: 1
+        env_file:
+            - .env
+        volumes:
+            - .:/var/www/html:cached
+            - /var/www/html/vendor
+            - /var/www/html/node_modules
+            - voltra-storage:/var/www/html/storage
+        depends_on:
+            postgres:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        networks:
+            - voltra
+        logging:
+            driver: json-file
+            options:
+                max-size: "20m"
+                max-file: "5"
+
+    postgres:
+        image: postgres:17-alpine
+        container_name: voltra-postgres
+        restart: unless-stopped
+        ports:
+            - "5432:5432"
+        environment:
+            POSTGRES_DB: ${DB_DATABASE:-voltra}
+            POSTGRES_USER: ${DB_USERNAME:-voltra}
+            POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+        volumes:
+            - voltra-pg:/var/lib/postgresql/data
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-voltra}"]
+            interval: 5s
+            timeout: 5s
+            retries: 10
+        networks:
+            - voltra
+
+    redis:
+        image: redis:7-alpine
+        container_name: voltra-redis
+        restart: unless-stopped
+        ports:
+            - "6379:6379"
+        command: redis-server --appendonly yes
+        volumes:
+            - voltra-redis:/data
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 5s
+            timeout: 3s
+            retries: 10
+        networks:
+            - voltra
+
+    mailpit:
+        image: axllent/mailpit:latest
+        container_name: voltra-mailpit
+        restart: unless-stopped
+        ports:
+            - "1025:1025"
+            - "8025:8025"
+        networks:
+            - voltra
+
+networks:
+    voltra:
+        driver: bridge
+
+volumes:
+    voltra-pg:
+    voltra-redis:
+    voltra-storage:

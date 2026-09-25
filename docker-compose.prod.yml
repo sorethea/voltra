@@ -1,0 +1,146 @@
+name: voltra-prod
+
+services:
+  app:
+    image: voltra/app:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: voltra-app
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:80"
+    env_file:
+      - .env.production
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      RUN_MIGRATIONS: "true"
+      QUEUE_WORKERS: 2
+    volumes:
+      - voltra-storage:/var/www/html/storage
+      - voltra-logs:/var/log/supervisor
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - voltra
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost/up"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  queue:
+    image: voltra/app:latest
+    container_name: voltra-queue
+    restart: unless-stopped
+    command: php /var/www/html/artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 --max-jobs=1000 --memory=512 --queue=high,default,low
+    env_file:
+      - .env.production
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      RUN_MIGRATIONS: "false"
+    volumes:
+      - voltra-storage:/var/www/html/storage
+    depends_on:
+      - app
+    networks:
+      - voltra
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  scheduler:
+    image: voltra/app:latest
+    container_name: voltra-scheduler
+    restart: unless-stopped
+    command: /bin/sh -c "while true; do php /var/www/html/artisan schedule:run --no-interaction; sleep 60; done"
+    env_file:
+      - .env.production
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      RUN_MIGRATIONS: "false"
+    volumes:
+      - voltra-storage:/var/www/html/storage
+    depends_on:
+      - app
+    networks:
+      - voltra
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: voltra-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - voltra-pg:/var/lib/postgresql/data
+      - ./backups/postgres:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - voltra
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  redis:
+    image: redis:7-alpine
+    container_name: voltra-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - voltra-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - voltra
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+networks:
+  voltra:
+    driver: bridge
+
+volumes:
+  voltra-pg:
+  voltra-redis:
+  voltra-storage:
+  voltra-logs:
