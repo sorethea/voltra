@@ -34,22 +34,22 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
-            ->colors([
-                'primary' => Color::Emerald,
-                'danger'  => Color::Rose,
-                'warning' => Color::Amber,
-                'success' => Color::Emerald,
-                'info'    => Color::Cyan,
-            ])
+//            ->colors([
+//                'primary' => Color::Emerald,
+//                'danger'  => Color::Rose,
+//                'warning' => Color::Amber,
+//                'success' => Color::Emerald,
+//                'info'    => Color::Cyan,
+//            ])
             ->font('Inter')
-            ->navigationGroups([
-                \Filament\Navigation\NavigationGroup::make('Users & Vehicles')
-                    ->icon('heroicon-o-user-group'),
-                \Filament\Navigation\NavigationGroup::make('Data')
-                    ->icon('heroicon-o-chart-bar'),
-                \Filament\Navigation\NavigationGroup::make('System')
-                    ->icon('heroicon-o-cog-6-tooth'),
-            ])
+//            ->navigationGroups([
+//                \Filament\Navigation\NavigationGroup::make('Users & Vehicles')
+//                    ->icon('heroicon-o-user-group'),
+//                \Filament\Navigation\NavigationGroup::make('Data')
+//                    ->icon('heroicon-o-chart-bar'),
+//                \Filament\Navigation\NavigationGroup::make('System')
+//                    ->icon('heroicon-o-cog-6-tooth'),
+//            ])
 
             ->sidebarCollapsibleOnDesktop()
             ->sidebarWidth('16rem')
