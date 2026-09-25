@@ -189,3 +189,35 @@ html {
 ::-webkit-scrollbar-thumb:hover {
     background: rgb(148 163 184);
 }
+/* ---------- Checkbox & radio contrast fix ---------- */
+input[type="checkbox"],
+input[type="radio"] {
+    accent-color: rgb(16 185 129) !important;
+    color-scheme: light;
+}
+
+.dark input[type="checkbox"],
+.dark input[type="radio"] {
+    color-scheme: dark;
+}
+
+/* Filament v5 custom checkbox (uses SVG/div, not native input) */
+.fi-fo-checkbox-list-option input[type="checkbox"]:checked + span,
+.fi-fo-checkbox-list-option input[type="checkbox"]:checked ~ svg,
+.fi-checkbox-input:checked {
+    background-color: rgb(16 185 129) !important;
+    border-color: rgb(16 185 129) !important;
+}
+
+/* Ensure SVG checkmark has visible stroke */
+.fi-fo-checkbox-list-option svg,
+.fi-checkbox svg {
+    color: white !important;
+    stroke: currentColor !important;
+}
+
+/* Fallback for native checkbox rendering */
+input[type="checkbox"]:checked {
+    background-color: rgb(16 185 129) !important;
+    border-color: rgb(16 185 129) !important;
+}
