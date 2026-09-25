@@ -41,6 +41,21 @@ class AdminPanelProvider extends PanelProvider
                 'info'    => Color::Cyan,
             ])
             ->font('Inter')
+            ->navigationGroups([
+                \Filament\Navigation\NavigationGroup::make('Users & Vehicles')
+                    ->icon('heroicon-o-user-group'),
+                \Filament\Navigation\NavigationGroup::make('Data')
+                    ->icon('heroicon-o-chart-bar'),
+                \Filament\Navigation\NavigationGroup::make('System')
+                    ->icon('heroicon-o-cog-6-tooth'),
+            ])
+
+            ->sidebarCollapsibleOnDesktop()
+            ->sidebarWidth('16rem')
+            ->maxContentWidth(Width::Full)
+            ->spa()
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('30s')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
